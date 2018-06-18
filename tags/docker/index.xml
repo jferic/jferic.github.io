@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>&#39;docker&#39; 标注的文章 on Blog by jferic</title>
+    <link>https://jferic.github.io/tags/docker/</link>
+    <description>Recent content in &#39;docker&#39; 标注的文章 on Blog by jferic</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <copyright>&amp;copy; 2018</copyright>
+    <lastBuildDate>Mon, 18 Jun 2018 00:52:10 +0800</lastBuildDate>
+    
+	<atom:link href="https://jferic.github.io/tags/docker/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Docker Registry GC</title>
+      <link>https://jferic.github.io/post/docker-registry-gc/</link>
+      <pubDate>Mon, 18 Jun 2018 00:31:16 +0800</pubDate>
+      
+      <guid>https://jferic.github.io/post/docker-registry-gc/</guid>
+      <description>我们的 CI 平台中私有化部署了 Docker Registry 用来存储 CI 过程中的镜像。这些镜像主要包括用于加速的依赖包缓存镜像和用于部署的应用镜像。但是官方提供的 Docker Registry 没有自</description>
+    </item>
+    
+  </channel>
+</rss>

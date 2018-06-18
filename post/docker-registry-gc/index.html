@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="theme" content="hugo-academic">
+  <meta name="generator" content="Hugo 0.43-DEV" />
+  <meta name="author" content="jferic">
+
+  
+  
+  
+  
+    
+      
+    
+  
+  <meta name="description" content="我们的 CI 平台中私有化部署了 Docker Registry 用来存储 CI 过程中的镜像。这些镜像主要包括用于加速的依赖包缓存镜像和用于部署的应用镜像。但是官方提供的 Docker Registry 没有自">
+
+  
+  <link rel="alternate" hreflang="zh-cn" href="https://jferic.github.io/post/docker-registry-gc/">
+
+  
+
+
+  
+
+  
+  
+  <meta name="theme-color" content="#0095eb">
+  
+  
+  
+  
+    
+  
+  
+    
+    
+      
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+      
+    
+  
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha512-6MXa8B6uaO18Hid6blRMetEIoPqHf7Ux1tnyIQdpt9qI5OACx7C+O3IVTr98vwGnlcg0LOLa02i9Y1HpVhlfiw==" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.8.6/css/academicons.min.css" integrity="sha256-uFVgMKfistnJAfoCUQigIl+JfUaP47GrRKjf6CTPVmw=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" integrity="sha256-ygkqlh3CYSUri3LhQxzdcm0n1EQvH2Y+U5S2idbLtxs=" crossorigin="anonymous">
+  
+  
+  
+  
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Montserrat:400,700%7cRoboto:400,400italic,700%7cRoboto&#43;Mono">
+  
+  <link rel="stylesheet" href="/styles.css">
+  
+
+  
+
+  
+  <link rel="alternate" href="https://jferic.github.io/index.xml" type="application/rss+xml" title="Blog by jferic">
+  <link rel="feed" href="https://jferic.github.io/index.xml" type="application/rss+xml" title="Blog by jferic">
+  
+
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="icon" type="image/png" href="/img/icon.png">
+  <link rel="apple-touch-icon" type="image/png" href="/img/icon-192.png">
+
+  <link rel="canonical" href="https://jferic.github.io/post/docker-registry-gc/">
+
+  <meta property="twitter:card" content="summary_large_image">
+  
+  <meta property="og:site_name" content="Blog by jferic">
+  <meta property="og:url" content="https://jferic.github.io/post/docker-registry-gc/">
+  <meta property="og:title" content="Docker Registry GC | Blog by jferic">
+  <meta property="og:description" content="我们的 CI 平台中私有化部署了 Docker Registry 用来存储 CI 过程中的镜像。这些镜像主要包括用于加速的依赖包缓存镜像和用于部署的应用镜像。但是官方提供的 Docker Registry 没有自"><meta property="og:image" content="https://jferic.github.io/img/https:/terminus-jferic.oss-cn-shanghai.aliyuncs.com/68747470733a2f2f7777772e646f636b65722e636f6d2f73697465732f64656661756c742f66696c65732f6f79737465722d72656769737472792d332e706e67.png">
+  <meta property="og:locale" content="zh-cn">
+  
+  <meta property="article:published_time" content="2018-06-18T00:31:16&#43;08:00">
+  
+  <meta property="article:modified_time" content="2018-06-18T00:31:16&#43;08:00">
+  
+
+  
+  
+
+  <title>Docker Registry GC | Blog by jferic</title>
+
+</head>
+<body id="top" data-spy="scroll" data-target="#toc" data-offset="71" >
+
+<nav class="navbar navbar-default navbar-fixed-top" id="navbar-main">
+  <div class="container">
+
+    
+    <div class="navbar-header">
+      
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse"
+              data-target=".navbar-collapse" aria-expanded="false">
+        <span class="sr-only">切换导航</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      
+      <a class="navbar-brand" href="/">Blog by jferic</a>
+    </div>
+
+    
+    <div class="collapse navbar-collapse">
+
+      
+      
+      <ul class="nav navbar-nav navbar-right">
+        
+
+        
+        
+        
+        
+        
+          
+        
+
+        <li class="nav-item">
+          <a href="/#posts">
+            
+            <span>博文</span>
+            
+          </a>
+        </li>
+
+        
+        
+
+        
+        
+        
+        
+        
+          
+        
+
+        <li class="nav-item">
+          <a href="/#about">
+            
+            <span>关于</span>
+            
+          </a>
+        </li>
+
+        
+        
+      
+
+      
+      </ul>
+
+    </div>
+  </div>
+</nav>
+
+
+<article class="article" itemscope itemtype="http://schema.org/Article">
+
+  
+<div class="article-header">
+  
+  
+    <img src="https://terminus-jferic.oss-cn-shanghai.aliyuncs.com/68747470733a2f2f7777772e646f636b65722e636f6d2f73697465732f64656661756c742f66696c65732f6f79737465722d72656769737472792d332e706e67.png" class="article-banner" itemprop="image">
+  
+
+  
+</div>
+
+
+
+  <div class="article-container">
+    <h1 itemprop="name">Docker Registry GC</h1>
+
+    
+
+<div class="article-metadata">
+
+  <span class="article-date">
+    
+    <time datetime="2018-06-18 00:31:16 &#43;0800 &#43;0800" itemprop="datePublished dateModified">
+      Jun 18, 2018
+    </time>
+  </span>
+  <span itemscope itemprop="author publisher" itemtype="http://schema.org/Person">
+    <meta itemprop="name" content="jferic">
+  </span>
+
+  
+  <span class="middot-divider"></span>
+  <span class="article-reading-time">
+    3 分钟阅读时间
+  </span>
+  
+
+  
+  
+
+  
+  
+  
+  
+
+  
+  
+<div class="share-box" aria-hidden="true">
+  <ul class="share">
+    <li>
+      <a class="twitter"
+         href="https://twitter.com/intent/tweet?text=Docker%20Registry%20GC&amp;url=https%3a%2f%2fjferic.github.io%2fpost%2fdocker-registry-gc%2f"
+         target="_blank" rel="noopener">
+        <i class="fa fa-twitter"></i>
+      </a>
+    </li>
+    <li>
+      <a class="facebook"
+         href="https://www.facebook.com/sharer.php?u=https%3a%2f%2fjferic.github.io%2fpost%2fdocker-registry-gc%2f"
+         target="_blank" rel="noopener">
+        <i class="fa fa-facebook"></i>
+      </a>
+    </li>
+    <li>
+      <a class="linkedin"
+         href="https://www.linkedin.com/shareArticle?mini=true&amp;url=https%3a%2f%2fjferic.github.io%2fpost%2fdocker-registry-gc%2f&amp;title=Docker%20Registry%20GC"
+         target="_blank" rel="noopener">
+        <i class="fa fa-linkedin"></i>
+      </a>
+    </li>
+    <li>
+      <a class="weibo"
+         href="http://service.weibo.com/share/share.php?url=https%3a%2f%2fjferic.github.io%2fpost%2fdocker-registry-gc%2f&amp;title=Docker%20Registry%20GC"
+         target="_blank" rel="noopener">
+        <i class="fa fa-weibo"></i>
+      </a>
+    </li>
+    <li>
+      <a class="email"
+         href="mailto:?subject=Docker%20Registry%20GC&amp;body=https%3a%2f%2fjferic.github.io%2fpost%2fdocker-registry-gc%2f">
+        <i class="fa fa-envelope"></i>
+      </a>
+    </li>
+  </ul>
+</div>
+
+
+  
+
+</div>
+
+
+    <div class="article-style" itemprop="articleBody">
+      
+
+<p>我们的 CI 平台中私有化部署了 Docker Registry 用来存储 CI 过程中的镜像。这些镜像主要包括用于加速的依赖包缓存镜像和用于部署的应用镜像。但是官方提供的 Docker Registry 没有自动清理镜像的功能，导致 Registry 中的镜像会随着时间越积越多，对 Registry 的 Storage 造成了压力。</p>
+
+<p>考虑到 CI 平台的特性，随着应用不断打包部署，缓存镜像和应用镜像都在不断更新，历史版本的镜像是可以删除的。所以，我们尝试进行 Docker Registry GC。</p>
+
+<h2 id="gc-的方法及问题">GC 的方法及问题</h2>
+
+<p>官方文档提供的 Delete 接口是基于镜像 Manifest 的 Digest 去删除镜像。</p>
+
+<pre><code class="language-http">DELETE /v2/&lt;name&gt;/manifests/&lt;reference&gt;
+</code></pre>
+
+<blockquote>
+<p>For deletes, <code>reference</code> <strong>must be a digest</strong> or the delete will fail.</p>
+</blockquote>
+
+<p>我们首先需要获取到所有待删除镜像的 Digest。</p>
+
+<pre><code class="language-go">// 首先遍历 Repositories 先获取 Tags
+tags, err := registry.GetTotalRepositoryTags(env.DockerRegistry, *repo, *outputFile, env.TagsIncludes...)
+... // handler error
+
+for _, tag := range tags {
+	// 然后获取该 Tag 的 Digest, by 'Docker-Content-Digest' Header
+	digest, err := registry.GetTagDigest(env.DockerRegistry, *repo, tag)
+	... // handler error
+
+	// 最后使用 Digest 删除镜像
+	err = registry.DeleteDigest(env.DockerRegistry, *repo, tag, digest)
+	... // handler error
+}
+</code></pre>
+
+<p>最后使用 Registry 的 garbage-collect 命令清理镜像。</p>
+
+<pre><code class="language-bash">bin/registry garbage-collect [--dry-run] /path/to/config.yml
+</code></pre>
+
+<p>下图是 dry-run 的结果，仅仅 57 个 blobs 被标志成可以删除，和预期的相差甚远。</p>
+
+<p><img src="https://terminus-jferic.oss-cn-shanghai.aliyuncs.com/image-20180618162303741.png" alt="image-20180618162303741" /></p>
+
+<h3 id="overwritten-tags-导致-blobs-未被-gc">Overwritten tags 导致 blobs 未被 GC</h3>
+
+<p>通过查找缓存镜像 c23b08159e8e2979eeab3c3b43c46132/release 发现该 repositry 下竟然存在 manifest ，并标记了一堆相关的 blobs。</p>
+
+<p><img src="https://terminus-jferic.oss-cn-shanghai.aliyuncs.com/image-20180618164316360.png" alt="image-20180618164316360" /></p>
+
+<p>查看 Registry 的 tag 目录，却并不存在任何 tag。</p>
+
+<p><img src="https://terminus-jferic.oss-cn-shanghai.aliyuncs.com/image-20180618164348321.png" alt="image-20180618164348321" /></p>
+
+<p>通过 ha256:1bc8a50d8403ed7464cd97bfd41eb6d322f611e89462600068929249210f0d84 这个 digest 真实能够获取到 manifest 文件。</p>
+
+<p><img src="https://terminus-jferic.oss-cn-shanghai.aliyuncs.com/image-20180618164814375.png" alt="image-20180618164814375" /></p>
+
+<p>这样基本确定：使用 tag 获取 digest 进而删除镜像的方法遗漏了一些 Manifests。</p>
+
+<h4 id="untagged-manifests">Untagged manifests</h4>
+
+<p>结合我们的使用场景，在官方找到很多相关的 Issues，例如：</p>
+
+<p><a href="https://github.com/docker/distribution/issues/2212" target="_blank">[Issue] Registry garbage-collect does not clean up blobs from overwritten tags</a></p>
+
+<p><a href="https://github.com/docker/distribution/issues/2301" target="_blank">[Issue] Feature req: garbage-collector should have possibility to clean untagged revisions</a></p>
+
+<p>确定原因是：</p>
+
+<blockquote>
+<p>我们的缓存镜像使用 latest 作为 tag，每次打包都可能生成一个新的镜像 push 到 Registry 中，这样就出现 overwritten tags，但在 Repository 的 revisions 目录下仍然保存了历史的 manifests。</p>
+
+<p>即使我们删除 latest tag 标记的镜像，但因为历史的 untagged manifest 仍然关联着 blobs，所以大量的 blobs 并没有被 GC。</p>
+</blockquote>
+
+<p>使用社区的 patch 版本（Registry/2.7 将  release 该功能）</p>
+
+<p><a href="https://github.com/docker/distribution/pull/2302" target="_blank">[PR] add possibility to clean untagged manifests</a></p>
+
+<p>可以删除 untagged 的 manifest 及其关联的 blobs。</p>
+
+<p><img src="https://terminus-jferic.oss-cn-shanghai.aliyuncs.com/image-20180618162303741.png" alt="image-20180618162417130" /></p>
+
+<p>下面我们简单了解一下 garbage collect 的挑战。</p>
+
+<h2 id="registry-gc-的挑战">Registry GC 的挑战</h2>
+
+<p>Registry 的物理存储包括两部分：blobs 和 repositories。其中 blobs 存储了镜像的 layers 和 manifest 数据文件，用 digest 作为 index；repositories 目录存储了个各种 Meta 数据，包括 layers、manifest 的 digest 信息。</p>
+
+<p><img src="https://terminus-jferic.oss-cn-shanghai.aliyuncs.com/image-20180618202642208.png" alt="image-20180618202642208" /></p>
+
+<p>基本关系是 repository -&gt; manifest (tag)  -&gt; layer =&gt; blob</p>
+
+<p>一个 repository 下面包含一个或者多个 manifest，可读的 tag 与manifest 关联； 一个 manifest 文件包含一个或者多个 layer；manifest 和 layer 的数据文件都存储在 blobs 目录下，以 digest 作为子目录索引 blob 数据文件。</p>
+
+<p>镜像的特点是分层 （layers）存储，镜像间可以共享 layer。这样删除镜像的核心挑战变成如何在 多个镜像（manifest）共享数据（layer）的情况下保证数据一致，同时保证并发写操作的原子性。</p>
+
+<h4 id="garbage-collect">Garbage collect</h4>
+
+<p>v2.6 版本的 Docker Registry 当前实现：</p>
+
+<blockquote>
+<p>Just find all the manifests, enumerate the referenced blobs and delete the blobs not in that set.</p>
+</blockquote>
+
+<p>所以实现了 mark 和 sweep 两个阶段，本质上是标记&amp;清理的 Lock the World GC 机制。因为在 mark 之后如果还有新的写入（没有mark）将导致误删。</p>
+
+<h3 id="deletes-on-roadmap">Deletes on Roadmap</h3>
+
+<p><a href="https://github.com/docker/distribution/blob/master/ROADMAP.md#deletes" target="_blank">Delete section on Roadmap</a> 重点讨论了删除背后的问题，也提出了 &ldquo;Reference Counting&rdquo;, &ldquo;Generational GC&rdquo;, Centralized Oracle&rdquo; 等方案。本质是 <strong>引用计数</strong>  问题，同时需要在删除时保证数据一致性。</p>
+
+    </div>
+
+    
+
+
+<div class="article-tags">
+  
+  <a class="btn btn-primary btn-outline" href="https://jferic.github.io/tags/docker/">docker</a>
+  
+</div>
+
+
+
+
+    
+    
+
+    
+
+    
+
+
+  </div>
+</article>
+
+<footer class="site-footer">
+  <div class="container">
+    <p class="powered-by">
+
+      &copy; 2018 &middot; 
+
+      Powered by the
+      <a href="https://sourcethemes.com/academic/" target="_blank" rel="noopener">Academic theme</a> for
+      <a href="https://gohugo.io" target="_blank" rel="noopener">Hugo</a>.
+
+      <span class="pull-right" aria-hidden="true">
+        <a href="#" id="back_to_top">
+          <span class="button_icon">
+            <i class="fa fa-chevron-up fa-2x"></i>
+          </span>
+        </a>
+      </span>
+
+    </p>
+  </div>
+</footer>
+
+
+<div id="modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close btn-large" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">引用</h4>
+      </div>
+      <div>
+        <pre><code class="modal-body tex"></code></pre>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-primary btn-outline js-copy-cite" href="#" target="_blank">
+          <i class="fa fa-copy"></i> 复制
+        </a>
+        <a class="btn btn-primary btn-outline js-download-cite" href="#" target="_blank">
+          <i class="fa fa-download"></i> 下载
+        </a>
+        <div id="modal-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+    
+
+    
+
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha512-3P8rXCuGJdNZOnUx/03c1jOTnMn3rP63nBip5gOP2qmUh5YAdVAvFZ1E+QLZZbC1rtMrQb+mah3AfYW11RUrWA==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.3/imagesloaded.pkgd.min.js" integrity="sha512-umsR78NN0D23AzgoZ11K7raBD+R6hqKojyBZs1w8WvYlsI+QuKRGBx3LFCwhatzBunCjDuJpDHwxD13sLMbpRA==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha512-iztkobsvnjKfAtTNdHkGVjAYTrrtlC7mGp/54c40wowO7LhURYl3gVzzcEqGl/qKXQltJ2HwMrdLcNUdo+N/RQ==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.4/isotope.pkgd.min.js" integrity="sha512-VDBOIlDbuC4VWxGJNmuFRQ0Li0SKkDpmGyuhAG5LTDLd/dJ/S0WMVxriR2Y+CyPL5gzjpN4f/6iqWVBJlht0tQ==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" integrity="sha256-X5PoE3KU5l+JcX+w09p/wHl9AzK333C4hJ2I9S5mD4M=" crossorigin="anonymous"></script>
+    
+    
+    <script src="/js/hugo-academic.js"></script>
+    
+
+    
+    
+      
+      
+      <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js" integrity="sha256-/BfiIkHlHoVihZdc6TFuj7MmJ0TWcWsMXkeDFwhi0zw=" crossorigin="anonymous"></script>
+      
+
+      
+
+      
+
+      <script>hljs.initHighlightingOnLoad();</script>
+    
+
+    
+    
+
+  </body>
+</html>
+
